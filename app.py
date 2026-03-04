@@ -5,7 +5,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 
 app = Flask(__name__, template_folder='.')
-app.config['SECRET_KEY'] = 'dev-secret-key-99'
+# Security: Use the environment variable if available, else fallback
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-99')
 
 # Absolute path for the DB file ensures it works on cloud servers
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -36,16 +37,25 @@ class Comment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     author = db.relationship('User')
 
-# --- AUTH ---
+# --- AUTH & DB INITIALIZATION ---
 login_manager = LoginManager(app)
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# FIX: This block now runs even when using Gunicorn/Production servers
+with app.app_context():
+    db.create_all()
+
 # --- ROUTES ---
 @app.route('/')
 def index():
-    posts = Post.query.order_by(Post.timestamp.desc()).all()
+    # Wrap in try/except to handle database lock issues on some hosts
+    try:
+        posts = Post.query.order_by(Post.timestamp.desc()).all()
+    except:
+        posts = []
     return render_template('index.html', posts=posts)
 
 @app.route('/register', methods=['POST'])
@@ -88,9 +98,7 @@ def comment(post_id):
     db.session.commit()
     return redirect(url_for('index'))
 
+# This block is only for local testing (python app.py)
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-    # Port configuration for web hosting
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
