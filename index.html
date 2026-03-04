@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRIBESHID</title>
+    <style>
+        :root {
+            --bg: #0f1113;
+            --card: #1a1d21;
+            --input: #24282d;
+            --text: #e1e3e6;
+            --muted: #9ba1a6;
+            --accent: #5865f2;
+            --border: #2d3136;
+        }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; line-height: 1.4; }
+        .container { max-width: 500px; margin: 0 auto; }
+        
+        nav { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+        .logo { font-weight: 800; font-size: 1.2rem; color: var(--accent); text-decoration: none; }
+        
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+        
+        input, textarea { background: var(--input); border: 1px solid var(--border); color: white; border-radius: 8px; padding: 12px; width: 100%; box-sizing: border-box; margin: 8px 0; }
+        button { background: var(--accent); color: white; border: none; padding: 12px; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; }
+
+        .post-header { font-size: 0.85rem; margin-bottom: 8px; }
+        .author { color: var(--accent); font-weight: bold; }
+        .time { color: var(--muted); margin-left: 5px; }
+        .post-content { font-size: 1rem; margin-bottom: 15px; white-space: pre-wrap; }
+
+        .comment-box { border-top: 1px solid var(--border); padding-top: 12px; }
+        .comment { background: var(--input); padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; font-size: 0.9rem; }
+        .comment b { color: var(--accent); }
+        
+        .error-msg { background: #f04747; color: white; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 0.8rem; }
+        a { color: var(--muted); text-decoration: none; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav>
+            <a href="/" class="logo">TRIBESHID</a>
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('logout') }}">Sign Out</a>
+            {% endif %}
+        </nav>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}<div class="error-msg">{{ messages[0] }}</div>{% endif %}
+        {% endwith %}
+
+        {% if not current_user.is_authenticated %}
+            <div class="card">
+                <h3 style="margin-top:0">Enter the Void</h3>
+                <form action="{{ url_for('register') }}" method="post">
+                    <input type="text" name="username" placeholder="Username" required>
+                    <input type="password" name="password" placeholder="Password" required>
+                    <button type="submit">Join / Login</button>
+                </form>
+            </div>
+        {% else %}
+            <div class="card">
+                <form action="{{ url_for('create_post') }}" method="post">
+                    <textarea name="content" placeholder="Share your thoughts..." rows="3" required></textarea>
+                    <button type="submit">Broadcast</button>
+                </form>
+            </div>
+        {% endif %}
+
+        {% for post in posts %}
+            <div class="card">
+                <div class="post-header">
+                    <span class="author">@{{ post.author.username }}</span>
+                    <span class="time">{{ post.timestamp.strftime('%I:%M %p') }}</span>
+                </div>
+                <div class="post-content">{{ post.content }}</div>
+                
+                <div class="comment-box">
+                    {% for c in post.comments %}
+                        <div class="comment"><b>{{ c.author.username }}</b> {{ c.content }}</div>
+                    {% endfor %}
+                    
+                    {% if current_user.is_authenticated %}
+                    <form action="{{ url_for('comment', post_id=post.id) }}" method="post" style="display:flex; gap:8px;">
+                        <input type="text" name="content" placeholder="Reply..." required style="margin:0; padding: 8px;">
+                        <button type="submit" style="width: auto; padding: 0 15px;">&rarr;</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</body>
+</html>
